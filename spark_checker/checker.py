@@ -1,26 +1,13 @@
 # coding:utf-8
 
-import sys
-from datetime import datetime
+import logging
 import streaming_utils
 
-def _log_debug(msg):
-        _logging('DEBUG', msg)
-
-def _log_info(msg):
-    _logging('INFO', msg)
-
-def _log_error(msg):
-    _logging('ERROR', msg)
-
-def _logging(log_level, msg):
-    print datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "[{level}]".format(level=log_level), msg.encode('utf-8')
-    sys.stdout.flush() # flush stdout buffer.
 
 def check(apps, config, alert_client):
 
     for app in apps:
-        _log_debug("check spark streaming:" + repr(app))
+        logging.debug("check spark streaming:" + repr(app))
 
         _check_impl(app, config, alert_client)
 
@@ -51,9 +38,9 @@ def _check_impl(app, config, alert_client):
         delayed_batch_number = streaming_utils.streaming_batch_delay(batch_stats)
         seconds_delayed = streaming_utils.streaming_time_delay(batch_stats)
         log_content = 'checked spark streaming, appname: %s, delayed_batch_number: %d, seconds_delayed: %d' % (app['name'], delayed_batch_number, seconds_delayed)
-        _log_debug(log_content)
+        logging.debug(log_content)
     except streaming_utils.StreamingUtilsError as e:
-        _log_error("failed to get streaming batch delay stats, caught exception" + repr(e))
+        logging.error("failed to get streaming batch delay stats, caught exception" + repr(e))
         subject = 'Guardian'
         objects = app['name']
         content = "无法获取到流式处理延迟统计"

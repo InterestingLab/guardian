@@ -8,12 +8,13 @@ from tzlocal import get_localzone
 
 MAX_RETRY = 5
 
+
 class StreamingUtilsError(Exception):
     pass
 
-def streaming_batch_stats(master_url, application_id, status=None, timeout=20):
 
-    stats_url = 'http://' + master_url + '/proxy/' + application_id +\
+def streaming_batch_stats(master_url, application_id, status=None, timeout=20):
+    stats_url = 'http://' + master_url + '/proxy/' + application_id + \
                 '/api/v1/applications/' + application_id + '/jobs'
 
     if status is not None:
@@ -50,7 +51,7 @@ def streaming_batch_stats(master_url, application_id, status=None, timeout=20):
     for job in stats_json:
 
         if not 'description' in job:
-            continue # job needs a batch start time
+            continue  # job needs a batch start time
 
         job_stats = {}
 
@@ -62,9 +63,9 @@ def streaming_batch_stats(master_url, application_id, status=None, timeout=20):
 
         if not batch_id in batch_stats:
             batch_stats[batch_id] = {
-                'batchStartTime': batch_time, # Scheduled Batch Start Time
+                'batchStartTime': batch_time,  # Scheduled Batch Start Time
                 'status': job['status'],
-                'jobs': [] # Job Details
+                'jobs': []  # Job Details
             }
 
         if job['status'] == 'RUNNING':
@@ -74,18 +75,23 @@ def streaming_batch_stats(master_url, application_id, status=None, timeout=20):
             'status': job['status'],
         }
         if 'submissionTime' in job:
-            job_stats['submissionTime'] = datetime.datetime.strptime(job['submissionTime'], '%Y-%m-%dT%H:%M:%S.%f%Z')
-            job_stats['submissionTime'] = job_stats['submissionTime'].replace(tzinfo=pytz.UTC)
+            job_stats['submissionTime'] = datetime.datetime.strptime(
+                job['submissionTime'], '%Y-%m-%dT%H:%M:%S.%f%Z')
+            job_stats['submissionTime'] = job_stats['submissionTime'].replace(
+                tzinfo=pytz.UTC)
             # print job['submissionTime'], job_stats['submissionTime'].astimezone(get_localzone())
 
         if 'completionTime' in job:
-            job_stats['completionTime'] = datetime.datetime.strptime(job['completionTime'], '%Y-%m-%dT%H:%M:%S.%f%Z')
-            job_stats['completionTime'] = job_stats['completionTime'].replace(tzinfo=pytz.UTC)
+            job_stats['completionTime'] = datetime.datetime.strptime(
+                job['completionTime'], '%Y-%m-%dT%H:%M:%S.%f%Z')
+            job_stats['completionTime'] = job_stats['completionTime'].replace(
+                tzinfo=pytz.UTC)
             # print job['completionTime'], job_stats['completionTime'].astimezone(get_localzone())
 
         batch_stats[batch_id]['jobs'].append(job_stats)
 
     return batch_stats
+
 
 def streaming_duration(batch_stats):
     """get spark streaming duration in seconds
@@ -98,7 +104,9 @@ def streaming_duration(batch_stats):
         return None
 
     batch_list = sorted(batch_stats.iteritems())
-    return (batch_list[1][1]['batchStartTime'] - batch_list[0][1]['batchStartTime']).seconds
+    return (batch_list[1][1]['batchStartTime'] - batch_list[0][1][
+        'batchStartTime']).seconds
+
 
 def streaming_batch_delay(batch_stats):
     """return number of batches delayed by now
@@ -119,8 +127,10 @@ def streaming_batch_delay(batch_stats):
 
     running_batches = sorted(running_batches)
 
-    delay = (now - running_batches[-1]['batchStartTime']).seconds / batch_duration
+    delay = (now - running_batches[-1][
+        'batchStartTime']).seconds / batch_duration
     return delay
+
 
 def streaming_time_delay(batch_stats):
     """get time delay in seconds of running batch by now
@@ -139,21 +149,26 @@ def streaming_time_delay(batch_stats):
     now = datetime.datetime.now()
     now = now.replace(tzinfo=get_localzone())
 
-    if now - datetime.timedelta(seconds=batch_duration) <= running_batches[0]['batchStartTime']:
+    if now - datetime.timedelta(seconds=batch_duration) <= running_batches[0][
+        'batchStartTime']:
         return 0
 
-    delay = now - datetime.timedelta(seconds=batch_duration) - running_batches[0]['batchStartTime']
-    print "now:", now, "batch_duration:", batch_duration, "batchStartTime:", running_batches[0]['batchStartTime'], "delay:", delay
+    delay = now - datetime.timedelta(seconds=batch_duration) - \
+            running_batches[0]['batchStartTime']
+    print "now:", now, "batch_duration:", batch_duration, "batchStartTime:", \
+    running_batches[0]['batchStartTime'], "delay:", delay
     return delay.seconds
 
 
 def streaming_running_batch(batch_stats):
     """get running batch list of given batch stats, order by 'batchStartTime' ascending
     """
-    running_batches = filter(lambda x: x['status'] == 'RUNNING', batch_stats.values())
+    running_batches = filter(lambda x: x['status'] == 'RUNNING',
+                             batch_stats.values())
     if len(running_batches) > 1:
         running_batches = sorted(running_batches)
     return running_batches
+
 
 def main(master_url, application_id, status):
     batch_stats = streaming_batch_stats(master_url, application_id, status)
@@ -175,14 +190,19 @@ def main(master_url, application_id, status):
 
         processing_time = None
         if stats['status'] != 'RUNNING':
-            processing_time = jobs[-1]['completionTime'] - jobs[0]['submissionTime']
+            processing_time = jobs[-1]['completionTime'] - jobs[0][
+                'submissionTime']
 
-        print 'Batch: %10s -- %20s -- %20s -- %20s' % (stats['status'], stats['batchStartTime'], processing_time, scheduling_delay)
+        print 'Batch: %10s -- %20s -- %20s -- %20s' % (
+        stats['status'], stats['batchStartTime'], processing_time,
+        scheduling_delay)
 
     print "Pick up running batches: "
     running_batches = streaming_running_batch(batch_stats)
     for stats in running_batches:
-        print 'Batch: %10s -- %20s -- %20s -- %20s' % (stats['status'], stats['batchStartTime'], processing_time, scheduling_delay, )
+        print 'Batch: %10s -- %20s -- %20s -- %20s' % (
+        stats['status'], stats['batchStartTime'], processing_time,
+        scheduling_delay,)
 
     print "~" * 30
 
@@ -216,13 +236,18 @@ Example usage:
         18:36:57 3.949 3789.862
         ...
 """
+
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--master', help='YARN ResourceManager URL', required=True)
-    parser.add_argument('--applicationId', help='YARN application ID', required=True)
-    parser.add_argument('--status', help='Spark Job Status[RUNNING, SUCCEEDED]', required=False)
+    parser.add_argument('--master', help='YARN ResourceManager URL',
+                        required=True)
+    parser.add_argument('--applicationId', help='YARN application ID',
+                        required=True)
+    parser.add_argument('--status',
+                        help='Spark Job Status[RUNNING, SUCCEEDED]',
+                        required=False)
 
     args = vars(parser.parse_args())
 
@@ -236,4 +261,3 @@ if __name__ == '__main__':
         print "Failure, caught exception:", repr(e)
     except KeyboardInterrupt as e:
         print "Exiting, bye !"
-
