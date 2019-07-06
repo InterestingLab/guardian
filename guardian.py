@@ -6,8 +6,8 @@ import subprocess
 import time
 import threading
 import requests
-from datetime import datetime
-
+# import logging
+from utils.log import *
 
 import config_api
 from alert import GuardianAlert, AlertException
@@ -17,25 +17,9 @@ from alert import GuardianAlert, AlertException
 
 import spark_checker
 
+
 # TODO:
 # start application concurrently
-
-
-def _log_debug(msg):
-    _logging('DEBUG', msg)
-
-
-def _log_info(msg):
-    _logging('INFO', msg)
-
-
-def _log_error(msg):
-    _logging('ERROR', msg)
-
-
-def _logging(log_level, msg):
-    print datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "[{level}]".format(level=log_level), msg.encode('utf-8')
-    sys.stdout.flush()  # flush stdout buffer.
 
 
 def set_config_default(config):
@@ -44,12 +28,11 @@ def set_config_default(config):
 
 
 def get_args_check(args):
-
     f = open(args, 'r')
     try:
         config = json.load(f)
     except ValueError as e:
-        _log_error(repr(e))
+        log_error(repr(e))
         raise ValueError('Config file is not a valid json')
 
     set_config_default(config)
@@ -69,11 +52,9 @@ class ThreadCheck(threading.Thread):
 
 
 def command_check(args):
-
-    _log_info("Starting to check applications")
+    log_info("Starting to check applications")
 
     while True:
-
         config = get_args_check(args)
         alert_client = GuardianAlert(config["alert_manager"])
         check_impl(config, alert_client)
@@ -140,16 +121,16 @@ def _get_yarn_active_rm(hosts, timeout=10):
     if active_rm is None:
         raise NoActiveYarnRM
 
-    _log_debug('Picked up Yarn active resource manager:' + active_rm)
+    log_debug('Picked up Yarn active resource manager:' + active_rm)
 
     return active_rm
 
 
 def _request_yarn(hosts, timeout=10):
-
     active_rm = _get_yarn_active_rm(hosts)
 
-    url = 'http://{host}/ws/v1/cluster/apps?states=accepted,running'.format(host=active_rm)
+    url = 'http://{host}/ws/v1/cluster/apps?states=accepted,running'.format(
+        host=active_rm)
     resp = requests.get(url, timeout=timeout)
     if resp.status_code != 200:
         raise CannotGetClusterApps()
@@ -163,7 +144,6 @@ def _request_yarn(hosts, timeout=10):
 
 
 def check_impl(args, alert_client):
-
     yarn_active_rm = None
     retry = 0
     while retry < 3:
@@ -176,20 +156,21 @@ def check_impl(args, alert_client):
             retry += 1
 
     if retry >= 3:
-        _log_error("Failed to send request to yarn resource manager, host config:" +
-                   ', '.join(args['yarn']['api_hosts']))
+        log_error(
+            "Failed to send request to yarn resource manager, host config:" +
+            ', '.join(args['yarn']['api_hosts']))
         subject = 'Guardian'
         objects = 'Yarn RM'
         content = 'Failed to send request to yarn resource manager.'
         try:
             alert_client.send_alert("ERROR", subject, objects, content)
         except AlertException as e:
-            _log_error('failed to send alert, caught exception: ' + repr(e))
+            log_error('failed to send alert, caught exception: ' + repr(e))
 
         return
 
     if j['apps'] is None:
-        _log_info("There is no app in yarn.")
+        log_info("There is no app in yarn.")
         running_apps = []
     else:
         running_apps = j['apps']['app']
@@ -227,11 +208,12 @@ def check_impl(args, alert_client):
         if actual_app_num > expected_app_num:
             subject = 'Guardian'
             objects = app_name
-            content = 'Unexpected running app number, expected/actual: {expected}/{actual}'.format(expected=app_config['app_num'], actual=len(apps))
+            content = 'Unexpected running app number, expected/actual: {expected}/{actual}'.format(
+                expected=app_config['app_num'], actual=len(apps))
             try:
                 alert_client.send_alert("ERROR", subject, objects, content)
             except AlertException as e:
-                _log_error('failed to send alert, caught exception: ' + repr(e))
+                log_error('failed to send alert, caught exception: ' + repr(e))
 
             continue
 
@@ -250,14 +232,13 @@ def check_impl(args, alert_client):
                 spark_checker.check(apps, config, alert_client)
 
     if len(not_running_apps) == 0:
-        _log_info("There is no application need to be started.")
+        log_info("There is no application need to be started.")
         return
 
     alert_not_running_apps(not_running_apps, args['apps'], alert_client)
 
 
 def alert_not_running_apps(app_names, app_configs, alert_client):
-
     for app_name in app_names:
 
         subject = 'Guardian'
@@ -266,7 +247,7 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
         try:
             alert_client.send_alert("ERROR", subject, objects, content)
         except AlertException as e:
-            _log_error('failed to send alert, caught exception: ' + repr(e))
+            log_error('failed to send alert, caught exception: ' + repr(e))
 
         app_info = filter(lambda x: x['app_name'] == app_name, app_configs)
         raw_cmd = app_info[0]['start_cmd']
@@ -278,7 +259,7 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
                 p = subprocess.Popen(cmd)
             except OSError:
                 # probably os cannot find the start command.
-                _log_error("Invalid start command: " + raw_cmd)
+                log_error("Invalid start command: " + raw_cmd)
                 retry += 1
                 continue
 
@@ -294,16 +275,16 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
 
         if retry >= 3:
 
-            _log_info("Alert sms after failed 3 times.")
+            log_info("Alert sms after failed 3 times.")
             subject = 'Guardian'
             objects = app_name
             content = 'Failed to start yarn app after 3 times.'
             try:
                 alert_client.send_alert("ERROR", subject, objects, content)
             except AlertException as e:
-                _log_error('failed to send alert, caught exception: ' + repr(e))
+                log_error('failed to send alert, caught exception: ' + repr(e))
 
-    _log_info("Finished checking applications")
+    log_info("Finished checking applications")
 
 
 def get_args_inspect(args):
@@ -320,7 +301,7 @@ def get_args_inspect(args):
     try:
         config = json.load(f)
     except ValueError as e:
-        _log_error(repr(e))
+        log_error(repr(e))
         raise ValueError('Config file is not a valid json')
 
     if args[1] != 'app_name':
@@ -336,8 +317,7 @@ def get_args_inspect(args):
 
 
 def command_inspect(args):
-
-    _log_info("Starting to inspect applications")
+    log_info("Starting to inspect applications")
 
     import re
 
@@ -350,7 +330,7 @@ def command_inspect(args):
     j, active_rm = _request_yarn(args['config']['yarn']['api_hosts'])
 
     if j['apps'] is None:
-        _log_info("There's no app in yarn")
+        log_info("There's no app in yarn")
         return
 
     running_apps = j['apps']['app']
@@ -373,7 +353,7 @@ def command_inspect(args):
 
     print json.dumps(config, indent=4)
 
-    _log_info("Finished inspecting applications, please check config.")
+    log_info("Finished inspecting applications, please check config.")
 
 
 if __name__ == '__main__':
@@ -425,5 +405,5 @@ if __name__ == '__main__':
             raise ValueError("Unsupported Command:" + command)
 
     except KeyboardInterrupt as e:
-        _log_info("Exiting. Bye")
+        log_info("Exiting. Bye")
         sys.exit(0)
