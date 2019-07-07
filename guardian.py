@@ -23,7 +23,7 @@ import spark_checker
 # start application concurrently
 
 log = getLogger()
-log_file = os.path.abspath("guardian.log")
+log_file = os.path.abspath("logs/guardian.log")
 rotate_handler = TimedRotatingFileHandler(log_file, when='h', interval=1,
                                           backupCount=56)
 
@@ -182,6 +182,8 @@ def check_impl(args, alert_client):
             alert_client.send_alert("ERROR", subject, objects, content)
         except AlertException as e:
             log.error('failed to send alert, caught exception: ' + repr(e))
+        except Exception as e:
+            log.error('uncaught exception: ' + str(e))
 
         return
 
