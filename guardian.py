@@ -24,8 +24,8 @@ import spark_checker
 
 log = getLogger()
 log_file = os.path.abspath("logs/guardian.log")
-rotate_handler = TimedRotatingFileHandler(log_file, when='h', interval=1,
-                                          backupCount=56)
+rotate_handler = TimedRotatingFileHandler(log_file, when='h', interval=24,
+                                          backupCount=7)
 
 stream_handler = logging.StreamHandler()
 format_str = ('%(asctime)s %(levelname)s '
