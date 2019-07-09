@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.header import Header
 
@@ -28,7 +29,6 @@ class Emails(object):
             message['Subject'] = Header(subject, 'utf-8')
             message['To'] = ';'.join(config['receivers'])
 
-
             try:
                 smtp = smtplib.SMTP()
                 smtp.connect(smtpserver)
@@ -36,7 +36,8 @@ class Emails(object):
                 smtp.sendmail(sender, receivers, message.as_string())
 
             except Exception as e:
-                print str(e)
+                logging.error(str(e))
+                raise Exception(e)
 
     @staticmethod
     def check_config(config):

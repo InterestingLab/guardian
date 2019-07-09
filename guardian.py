@@ -168,12 +168,13 @@ def check_impl(args, alert_client):
             break
 
         except (ValueError, NoAvailableYarnRM, NoActiveYarnRM):
-
+            logging.warning("Failed to send request to yarn resource manager, "
+                            "retry")
             retry += 1
 
     if retry >= 3:
         logging.error(
-            "Failed to send request to yarn resource manager, host config:" +
+            "Failed to send request to yarn resource manager, host config: " +
             ', '.join(args['yarn']['api_hosts']))
         subject = 'Guardian'
         objects = 'Yarn RM'
