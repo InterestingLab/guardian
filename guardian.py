@@ -12,8 +12,8 @@ from logging import getLogger, Formatter, DEBUG
 from logging.handlers import TimedRotatingFileHandler
 
 import config_api
-from alert import (GuardianAlert, AlertException,
-                   UnsupportedAlertMethod, IncorrectConfig)
+from alert import GuardianAlert, AlertException
+
 # TODO:
 # from contacts import contacts
 
@@ -60,31 +60,26 @@ def get_args_check(args):
 
 
 class ThreadCheck(threading.Thread):
-    def __init__(self, t_name, args):
-        self.args = args
+    def __init__(self, t_name, file_path, alert_client):
+        self.path = file_path
+        self.alert_client = alert_client
         threading.Thread.__init__(self, name=t_name)
 
     def run(self):
-        command_check(self.args)
+        command_check(self.path)
 
 
-def command_check(args):
+def command_check(file_path, alert_client):
+    """
+
+    :param file_path: Config file path.
+    :param alert_client: Member of GuardianAlert
+    :return:
+    """
     logging.info("Starting to check applications")
-    config = get_args_check(args)
-
-    alert_client = None
-    try:
-        # Init Alert Client
-        alert_client = GuardianAlert(config["alert_manager"])
-    except UnsupportedAlertMethod as e:
-        logging.error("Unsupported alert method: " + str(e))
-    except IncorrectConfig as e:
-        logging.error("Incorrect config: " + str(e))
-    except Exception as e:
-        logging.error("Unknown error: " + str(e))
 
     while True:
-        config = get_args_check(args)
+        config = get_args_check(file_path)
         check_impl(config, alert_client)
         time.sleep(config['check_interval'])
 
@@ -413,12 +408,13 @@ if __name__ == '__main__':
             if len(sys.argv[2:]) != 1:
                 raise ValueError('Invalid argument number')
 
-            # running with flask
-            t = ThreadCheck('check', sys.argv[2])
+            config = get_args_check(sys.argv[2])
+
+            alert_client = GuardianAlert(config["alert_manager"])
+            t = ThreadCheck('check', sys.argv[2], alert_client)
             t.setDaemon(True)
             t.start()
 
-            config = get_args_check(sys.argv[2])
             port = 5000
             if 'port' in config:
                 port = config['port']
