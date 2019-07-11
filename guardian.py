@@ -12,7 +12,8 @@ from logging import getLogger, Formatter, DEBUG
 from logging.handlers import TimedRotatingFileHandler
 
 import config_api
-from alert import GuardianAlert, AlertException
+from alert import (GuardianAlert, AlertException,
+                   UnsupportedAlertMethod, IncorrectConfig)
 # TODO:
 # from contacts import contacts
 
@@ -69,10 +70,21 @@ class ThreadCheck(threading.Thread):
 
 def command_check(args):
     logging.info("Starting to check applications")
+    config = get_args_check(args)
+
+    alert_client = None
+    try:
+        # Init Alert Client
+        alert_client = GuardianAlert(config["alert_manager"])
+    except UnsupportedAlertMethod as e:
+        logging.error("Unsupported alert method: " + str(e))
+    except IncorrectConfig as e:
+        logging.error("Incorrect config: " + str(e))
+    except Exception as e:
+        logging.error("Unknown error: " + str(e))
 
     while True:
         config = get_args_check(args)
-        alert_client = GuardianAlert(config["alert_manager"])
         check_impl(config, alert_client)
         time.sleep(config['check_interval'])
 
