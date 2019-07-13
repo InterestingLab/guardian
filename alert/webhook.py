@@ -2,20 +2,18 @@
 
 import json
 import httplib
+from alert.alert_base import GuardianAlertBase
 from urlparse import urlparse
 
 from alert_util import match_alert, AlertException
 
 
-class Webhook(object):
+class Webhook(GuardianAlertBase):
 
-    def __init__(self):
-        self.name = "webhook"
+    def send_alert(self, level, subject, objects, content):
 
-    @staticmethod
-    def send_alert(config, level, subject, objects, content):
-        config = config['webhook']
-        url = config['url']
+        alert_config = self.config['webhook']
+        url = alert_config['url']
         params = {
             'subject': subject,
             'objects': objects,
@@ -27,7 +25,7 @@ class Webhook(object):
             'Accept': 'text/plain'
         }
 
-        if match_alert(config['routes'], level):
+        if match_alert(alert_config['routes'], level):
             url_info = urlparse(url)
             port = 80 if url_info.port is None else url_info.port
             try:
@@ -38,10 +36,9 @@ class Webhook(object):
             except Exception as e:
                 raise AlertException(e)
 
-    @staticmethod
-    def check_config(config):
-        config = config['webhook']
-        if 'url' not in config or 'routes' not in config:
+    def check_config(self):
+        alert_config = self.config['webhook']
+        if 'url' not in alert_config or 'routes' not in alert_config:
             return False
         else:
             return True

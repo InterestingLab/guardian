@@ -67,7 +67,7 @@ class ThreadCheck(threading.Thread):
         threading.Thread.__init__(self, name=t_name)
 
     def run(self):
-        command_check(self.path)
+        command_check(self.path, self.alert_client)
 
 
 def command_check(file_path, alert_client):
