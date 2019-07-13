@@ -5,7 +5,7 @@ import logging
 from email.mime.text import MIMEText
 from email.header import Header
 
-from alert_util import match_alert
+from alert_util import match_alert, AlertException
 
 
 class Emails(object):
@@ -37,7 +37,7 @@ class Emails(object):
 
             except Exception as e:
                 logging.error(str(e))
-                raise Exception(e)
+                raise AlertException(e)
 
     @staticmethod
     def check_config(config):

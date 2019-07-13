@@ -12,7 +12,8 @@ from logging import getLogger, Formatter, DEBUG
 from logging.handlers import TimedRotatingFileHandler
 
 import config_api
-from alert import GuardianAlert, AlertException
+from alert.guardian_alert import GuardianAlert
+from alert.alert_util import AlertException
 
 # TODO:
 # from contacts import contacts
@@ -186,12 +187,7 @@ def check_impl(args, alert_client):
         subject = 'Guardian'
         objects = 'Yarn RM'
         content = 'Failed to send request to yarn resource manager.'
-        try:
-            alert_client.send_alert("ERROR", subject, objects, content)
-        except AlertException as e:
-            log.error('failed to send alert, caught exception: ' + repr(e))
-        except Exception as e:
-            log.error('uncaught exception: ' + str(e))
+        alert_client.send_alert("ERROR", subject, objects, content)
 
         return
 
@@ -236,11 +232,7 @@ def check_impl(args, alert_client):
             objects = app_name
             content = 'Unexpected running app number, expected/actual: {expected}/{actual}'.format(
                 expected=app_config['app_num'], actual=len(apps))
-            try:
-                alert_client.send_alert("ERROR", subject, objects, content)
-            except AlertException as e:
-                log.error('failed to send alert, caught exception: ' + repr(e))
-
+            alert_client.send_alert("ERROR", subject, objects, content)
             continue
 
         # specific type of checker has been set
@@ -269,11 +261,9 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
 
         subject = 'Guardian'
         objects = app_name
-        content = 'App is not running or less than expected number of running instance, will restart.'
-        try:
-            alert_client.send_alert("ERROR", subject, objects, content)
-        except AlertException as e:
-            log.error('failed to send alert, caught exception: ' + repr(e))
+        content = ('App is not running or less than expected number of '
+                   'running instance, will restart.')
+        alert_client.send_alert("ERROR", subject, objects, content)
 
         app_info = filter(lambda x: x['app_name'] == app_name, app_configs)
         raw_cmd = app_info[0]['start_cmd']
@@ -305,10 +295,7 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
             subject = 'Guardian'
             objects = app_name
             content = 'Failed to start yarn app after 3 times.'
-            try:
-                alert_client.send_alert("ERROR", subject, objects, content)
-            except AlertException as e:
-                log.error('failed to send alert, caught exception: ' + repr(e))
+            alert_client.send_alert("ERROR", subject, objects, content)
 
     logging.info("Finished checking applications")
 

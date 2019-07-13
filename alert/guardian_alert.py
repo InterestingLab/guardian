@@ -1,7 +1,10 @@
 # encoding: utf-8
 
-from send_alert import alert_manager
+from alert import alert_manager
 import logging
+
+from alert.alert_util import (UnsupportedAlertMethod, IncorrectConfig,
+                              AlertException)
 
 
 class GuardianAlert(object):
@@ -24,22 +27,13 @@ class GuardianAlert(object):
 
     def send_alert(self, level, subject, objects, content):
         for alert in self.alerts:
-            alert.send_alert(self.alert_config, level, subject, objects,
-                             content)
+            try:
+                alert.send_alert(self.alert_config, level, subject, objects,
+                                 content)
+            except AlertException as e:
+                logging.error('failed to send alert, caught exception: ' + repr(e))
 
     def check_config(self):
         for alert_impl in self.alerts:
             if not alert_impl.check_config(self.alert_config):
                 raise IncorrectConfig("Incorrect Config: " + alert_impl.name)
-
-
-class AlertException(Exception):
-    pass
-
-
-class UnsupportedAlertMethod(AlertException):
-    pass
-
-
-class IncorrectConfig(AlertException):
-    pass
