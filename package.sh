@@ -1,7 +1,7 @@
 #!/bin/sh
 
 APP_NAME=guardian
-VERSION=1.0.0
+VERSION=1.1.0
 PACKAGE_DIR=$APP_NAME"_"$VERSION
 echo "Building Package $PACKAGE_DIR"
 
@@ -19,6 +19,7 @@ fi
 
 cd dist
 mkdir -p $PACKAGE_DIR/bin
+mkdir -p $PACKAGE_DIR/logs
 cp $APP_NAME $PACKAGE_DIR/bin
 cp alert $PACKAGE_DIR/bin
 

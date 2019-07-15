@@ -12,7 +12,9 @@ from logging import getLogger, Formatter, DEBUG
 from logging.handlers import TimedRotatingFileHandler
 
 import config_api
-from alert import GuardianAlert, AlertException
+from alert.guardian_alert import GuardianAlert
+from alert.alert_util import AlertException
+
 # TODO:
 # from contacts import contacts
 
@@ -59,20 +61,26 @@ def get_args_check(args):
 
 
 class ThreadCheck(threading.Thread):
-    def __init__(self, t_name, args):
-        self.args = args
+    def __init__(self, t_name, file_path, alert_client):
+        self.path = file_path
+        self.alert_client = alert_client
         threading.Thread.__init__(self, name=t_name)
 
     def run(self):
-        command_check(self.args)
+        command_check(self.path, self.alert_client)
 
 
-def command_check(args):
+def command_check(file_path, alert_client):
+    """
+
+    :param file_path: Config file path.
+    :param alert_client: Member of GuardianAlert
+    :return:
+    """
     logging.info("Starting to check applications")
 
     while True:
-        config = get_args_check(args)
-        alert_client = GuardianAlert(config["alert_manager"])
+        config = get_args_check(file_path)
         check_impl(config, alert_client)
         time.sleep(config['check_interval'])
 
@@ -168,22 +176,18 @@ def check_impl(args, alert_client):
             break
 
         except (ValueError, NoAvailableYarnRM, NoActiveYarnRM):
-
+            logging.warning("Failed to send request to yarn resource manager, "
+                            "retry")
             retry += 1
 
     if retry >= 3:
         logging.error(
-            "Failed to send request to yarn resource manager, host config:" +
+            "Failed to send request to yarn resource manager, host config: " +
             ', '.join(args['yarn']['api_hosts']))
         subject = 'Guardian'
         objects = 'Yarn RM'
         content = 'Failed to send request to yarn resource manager.'
-        try:
-            alert_client.send_alert("ERROR", subject, objects, content)
-        except AlertException as e:
-            log.error('failed to send alert, caught exception: ' + repr(e))
-        except Exception as e:
-            log.error('uncaught exception: ' + str(e))
+        alert_client.send_alert("ERROR", subject, objects, content)
 
         return
 
@@ -228,11 +232,7 @@ def check_impl(args, alert_client):
             objects = app_name
             content = 'Unexpected running app number, expected/actual: {expected}/{actual}'.format(
                 expected=app_config['app_num'], actual=len(apps))
-            try:
-                alert_client.send_alert("ERROR", subject, objects, content)
-            except AlertException as e:
-                log.error('failed to send alert, caught exception: ' + repr(e))
-
+            alert_client.send_alert("ERROR", subject, objects, content)
             continue
 
         # specific type of checker has been set
@@ -261,11 +261,9 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
 
         subject = 'Guardian'
         objects = app_name
-        content = 'App is not running or less than expected number of running instance, will restart.'
-        try:
-            alert_client.send_alert("ERROR", subject, objects, content)
-        except AlertException as e:
-            log.error('failed to send alert, caught exception: ' + repr(e))
+        content = ('App is not running or less than expected number of '
+                   'running instance, will restart.')
+        alert_client.send_alert("ERROR", subject, objects, content)
 
         app_info = filter(lambda x: x['app_name'] == app_name, app_configs)
         raw_cmd = app_info[0]['start_cmd']
@@ -297,10 +295,7 @@ def alert_not_running_apps(app_names, app_configs, alert_client):
             subject = 'Guardian'
             objects = app_name
             content = 'Failed to start yarn app after 3 times.'
-            try:
-                alert_client.send_alert("ERROR", subject, objects, content)
-            except AlertException as e:
-                log.error('failed to send alert, caught exception: ' + repr(e))
+            alert_client.send_alert("ERROR", subject, objects, content)
 
     logging.info("Finished checking applications")
 
@@ -400,12 +395,13 @@ if __name__ == '__main__':
             if len(sys.argv[2:]) != 1:
                 raise ValueError('Invalid argument number')
 
-            # running with flask
-            t = ThreadCheck('check', sys.argv[2])
+            config = get_args_check(sys.argv[2])
+
+            alert_client = GuardianAlert(config["alert_manager"])
+            t = ThreadCheck('check', sys.argv[2], alert_client)
             t.setDaemon(True)
             t.start()
 
-            config = get_args_check(sys.argv[2])
             port = 5000
             if 'port' in config:
                 port = config['port']

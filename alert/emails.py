@@ -1,20 +1,19 @@
 # encoding: utf-8
 
 import smtplib
+import logging
+from alert.alert_base import GuardianAlertBase
 from email.mime.text import MIMEText
 from email.header import Header
 
-from alert_util import match_alert
+from alert_util import match_alert, AlertException
 
 
-class Emails(object):
+class Emails(GuardianAlertBase):
 
-    def __init__(self):
-        self.name = 'emails'
+    def send_alert(self, level, subject, objects, content):
 
-    @staticmethod
-    def send_alert(config, level, subject, objects, content):
-
+        config = self.config
         config = config['emails']
         sender = config['sender']
         receivers = config['receivers']
@@ -28,7 +27,6 @@ class Emails(object):
             message['Subject'] = Header(subject, 'utf-8')
             message['To'] = ';'.join(config['receivers'])
 
-
             try:
                 smtp = smtplib.SMTP()
                 smtp.connect(smtpserver)
@@ -36,16 +34,16 @@ class Emails(object):
                 smtp.sendmail(sender, receivers, message.as_string())
 
             except Exception as e:
-                print str(e)
+                logging.error(str(e))
+                raise AlertException(e)
 
-    @staticmethod
-    def check_config(config):
-        config = config['emails']
+    def check_config(self):
+        alert_config = self.config['emails']
         arg_list = ['sender', 'receivers', 'smtp_server', 'auth_username',
                     'auth_password', 'routes']
 
         for arg in arg_list:
-            if arg not in config:
+            if arg not in alert_config:
                 return False
 
         return True
