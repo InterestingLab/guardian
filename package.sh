@@ -1,4 +1,3 @@
-▽
 #!/bin/sh
 
 APP_NAME=guardian
