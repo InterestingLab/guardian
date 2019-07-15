@@ -32,9 +32,11 @@ class GuardianAlert(object):
         for alert in self.alerts:
             try:
                 alert.send_alert(level, subject, objects, content)
+                logging.info("Send alert with <{}> succeed.".format(
+                    alert.name))
             except AlertException as e:
                 logging.error(
-                    'failed to send alert, caught exception: ' + repr(e))
+                    'Failed to send alert, caught exception: ' + repr(e))
 
     def check_config(self):
         for alert_impl in self.alerts:
