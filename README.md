@@ -50,5 +50,6 @@ pip install -r requirements.txt
 
 ```
 # show help information
-./dist/guardian
+cd ./dist/guardian_1.1.0/
+./bin/guardian checkout config.json.template
 ```
