@@ -11,17 +11,10 @@ if [ $? != 0 ];then
     exit -1
 fi
 
-pyinstaller --onefile alert.py
-if [ $? != 0 ];then
-    echo "[ERROR] failed to build $APP_NAME module: alert"
-    exit -1
-fi
-
 cd dist
 mkdir -p $PACKAGE_DIR/bin
 mkdir -p $PACKAGE_DIR/logs
 cp $APP_NAME $PACKAGE_DIR/bin
-cp alert $PACKAGE_DIR/bin
 
 mkdir -p $PACKAGE_DIR/config
 cp ../config.json.template $PACKAGE_DIR/config
